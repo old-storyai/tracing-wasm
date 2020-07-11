@@ -1,0 +1,25 @@
+[package]
+authors = ["Cole Lawrence <cole@colelawrence.com>"]
+categories = [
+  "development-tools::debugging",
+  "development-tools::profiling",
+  "no-std",
+  "wasm",
+]
+description = "tracing subscriber for browser WASM"
+edition = "2018"
+exclude = ["*.png"]
+keywords = ["logging", "metrics", "wasm", "spans", "tracing"]
+license = "MIT or APACHE"
+name = "tracing-wasm"
+readme = "README.md"
+repository = "https://github.com/storyscript/tracing-wasm"
+version = "0.1.0"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+tracing = {version = "0.1", features = ["attributes"]}
+tracing-subscriber = {version = "0.2", features = ["registry"]}
+wasm-bindgen = {version = "0.2"}
