@@ -23,8 +23,8 @@ Leverage performance profiling with your browser tools with the [tracing crate](
 For the simplest out of the box set-up, you can simply set `tracing_wasm` as your default tracing Subscriber in wasm_bindgen(start)
 
 We have this declared in our `./src/lib.rs`
-```rs
 
+```rust
 #[wasm_bindgen(start)]
 pub fn start() -> Result<(), JsValue> {
     // print pretty errors in wasm https://github.com/rustwasm/console_error_panic_hook
@@ -36,5 +36,4 @@ pub fn start() -> Result<(), JsValue> {
 
     Ok(())
 }
-
 ```
