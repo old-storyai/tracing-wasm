@@ -27,6 +27,7 @@ extern "C" {
 }
 
 pub struct WASMLayerConfig {
+    pub level: tracing::Level,
     /// Log events will be marked and measured so they appear in performance Timings
     pub report_logs_in_timings: bool,
     /// Log events will be logged to the browser console
@@ -38,6 +39,7 @@ pub struct WASMLayerConfig {
 impl core::default::Default for WASMLayerConfig {
     fn default() -> Self {
         WASMLayerConfig {
+            level: tracing::Level::TRACE,
             report_logs_in_timings: true,
             report_logs_in_console: true,
             use_console_color: true,
@@ -71,6 +73,11 @@ fn mark_name(id: &tracing::Id) -> String {
 }
 
 impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for WASMLayer {
+    fn enabled(&self, metadata: &tracing::Metadata<'_>, _: Context<'_, S>) -> bool {
+        let level = metadata.level();
+        level <= &self.config.level
+    }
+
     fn new_span(
         &self,
         attrs: &tracing::span::Attributes<'_>,
@@ -95,7 +102,6 @@ impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for WASMLayer {
             }
         }
     }
-
     // /// doc: Notifies this layer that a span with the ID span recorded that it follows from the span with the ID follows.
     // fn on_follows_from(&self, _span: &tracing::Id, _follows: &tracing::Id, ctx: Context<'_, S>) {}
     /// doc: Notifies this layer that an event has occurred.
