@@ -1,10 +1,8 @@
 use core::fmt::{self, Write};
 use core::sync::atomic::AtomicUsize;
 
-use tracing;
 use tracing::field::{Field, Visit};
 use tracing::Subscriber;
-use tracing_subscriber;
 use tracing_subscriber::layer::*;
 use tracing_subscriber::registry::*;
 
