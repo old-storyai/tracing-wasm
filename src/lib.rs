@@ -1,10 +1,8 @@
 use core::fmt::{self, Write};
 use core::sync::atomic::AtomicUsize;
 
-use tracing;
 use tracing::field::{Field, Visit};
 use tracing::Subscriber;
-use tracing_subscriber;
 use tracing_subscriber::layer::*;
 use tracing_subscriber::registry::*;
 
@@ -113,12 +111,12 @@ impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for WASMLayer {
                 if self.config.use_console_color {
                     log4(
                         &format!("%c{}%c {}%c{}", level, origin, recorder),
-                        match level {
-                            &tracing::Level::TRACE => "color: dodgerblue; background: #444",
-                            &tracing::Level::DEBUG => "color: lawngreen; background: #444",
-                            &tracing::Level::INFO => "color: whitesmoke; background: #444",
-                            &tracing::Level::WARN => "color: orange; background: #444",
-                            &tracing::Level::ERROR => "color: red; background: #444",
+                        match *level {
+                            tracing::Level::TRACE => "color: dodgerblue; background: #444",
+                            tracing::Level::DEBUG => "color: lawngreen; background: #444",
+                            tracing::Level::INFO => "color: whitesmoke; background: #444",
+                            tracing::Level::WARN => "color: orange; background: #444",
+                            tracing::Level::ERROR => "color: red; background: #444",
                         },
                         "color: gray; font-style: italic",
                         "color: inherit",
@@ -217,7 +215,7 @@ impl Visit for StringRecorder {
         } else {
             if self.1 {
                 // following args
-                write!(self.0, "\n").unwrap();
+                writeln!(self.0).unwrap();
             } else {
                 // first arg
                 write!(self.0, " ").unwrap();
