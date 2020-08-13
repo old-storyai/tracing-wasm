@@ -113,12 +113,12 @@ impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for WASMLayer {
                 if self.config.use_console_color {
                     log4(
                         &format!("%c{}%c {}%c{}", level, origin, recorder),
-                        match level {
-                            &tracing::Level::TRACE => "color: dodgerblue; background: #444",
-                            &tracing::Level::DEBUG => "color: lawngreen; background: #444",
-                            &tracing::Level::INFO => "color: whitesmoke; background: #444",
-                            &tracing::Level::WARN => "color: orange; background: #444",
-                            &tracing::Level::ERROR => "color: red; background: #444",
+                        match *level {
+                            tracing::Level::TRACE => "color: dodgerblue; background: #444",
+                            tracing::Level::DEBUG => "color: lawngreen; background: #444",
+                            tracing::Level::INFO => "color: whitesmoke; background: #444",
+                            tracing::Level::WARN => "color: orange; background: #444",
+                            tracing::Level::ERROR => "color: red; background: #444",
                         },
                         "color: gray; font-style: italic",
                         "color: inherit",
