@@ -217,7 +217,7 @@ impl Visit for StringRecorder {
         } else {
             if self.1 {
                 // following args
-                write!(self.0, "\n").unwrap();
+                writeln!(self.0).unwrap();
             } else {
                 // first arg
                 write!(self.0, " ").unwrap();
