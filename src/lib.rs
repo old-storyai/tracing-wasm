@@ -24,13 +24,147 @@ extern "C" {
     fn log4(message1: &str, message2: &str, message3: &str, message4: &str);
 }
 
-pub struct WASMLayerConfig {
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_default_built_config() {
+        let builder = WASMLayerConfigBuilder::new();
+
+        let config = builder.build();
+
+        assert_eq!(
+            config,
+            WASMLayerConfig {
+                report_logs_in_timings: true,
+                report_logs_in_console: true,
+                use_console_color: true,
+            }
+        )
+    }
+
+    #[test]
+    fn test_set_report_logs_in_timings() {
+        let mut builder = WASMLayerConfigBuilder::new();
+        builder.set_report_logs_in_timings(false);
+
+        let config = builder.build();
+
+        assert_eq!(config.report_logs_in_timings, false);
+    }
+
+    #[test]
+    fn test_set_console_config_no_reporting() {
+        let mut builder = WASMLayerConfigBuilder::new();
+        builder.set_console_config(ConsoleConfig::NoReporting);
+
+        let config = builder.build();
+
+        assert_eq!(config.report_logs_in_console, false);
+        assert_eq!(config.use_console_color, false);
+    }
+
+    #[test]
+    fn test_set_console_config_without_color() {
+        let mut builder = WASMLayerConfigBuilder::new();
+        builder.set_console_config(ConsoleConfig::ReportWithoutConsoleColor);
+
+        let config = builder.build();
+
+        assert_eq!(config.report_logs_in_console, true);
+        assert_eq!(config.use_console_color, false);
+    }
+
+    #[test]
+    fn test_set_console_config_with_color() {
+        let mut builder = WASMLayerConfigBuilder::new();
+        builder.set_console_config(ConsoleConfig::ReportWithConsoleColor);
+
+        let config = builder.build();
+
+        assert_eq!(config.report_logs_in_console, true);
+        assert_eq!(config.use_console_color, true);
+    }
+}
+
+pub enum ConsoleConfig {
+    NoReporting,
+    ReportWithoutConsoleColor,
+    ReportWithConsoleColor,
+}
+
+pub struct WASMLayerConfigBuilder {
     /// Log events will be marked and measured so they appear in performance Timings
-    pub report_logs_in_timings: bool,
+    report_logs_in_timings: bool,
     /// Log events will be logged to the browser console
-    pub report_logs_in_console: bool,
+    report_logs_in_console: bool,
     /// Only relevant if report_logs_in_console is true, this will use color style strings in the console.
-    pub use_console_color: bool,
+    use_console_color: bool,
+}
+
+impl WASMLayerConfigBuilder {
+    pub fn new() -> WASMLayerConfigBuilder {
+        WASMLayerConfigBuilder::default()
+    }
+
+    /// Set whether events should appear in performance Timings
+    pub fn set_report_logs_in_timings(
+        &mut self,
+        report_logs_in_timings: bool,
+    ) -> &mut WASMLayerConfigBuilder {
+        self.report_logs_in_timings = report_logs_in_timings;
+        self
+    }
+
+    /// Set if and how events should be displayed in the browser console
+    pub fn set_console_config(
+        &mut self,
+        console_config: ConsoleConfig,
+    ) -> &mut WASMLayerConfigBuilder {
+        match console_config {
+            ConsoleConfig::NoReporting => {
+                self.report_logs_in_console = false;
+                self.use_console_color = false;
+            }
+            ConsoleConfig::ReportWithoutConsoleColor => {
+                self.report_logs_in_console = true;
+                self.use_console_color = false;
+            }
+            ConsoleConfig::ReportWithConsoleColor => {
+                self.report_logs_in_console = true;
+                self.use_console_color = true;
+            }
+        }
+
+        self
+    }
+
+    /// Build the WASMLayerConfig
+    pub fn build(&self) -> WASMLayerConfig {
+        WASMLayerConfig {
+            report_logs_in_timings: self.report_logs_in_timings,
+            report_logs_in_console: self.report_logs_in_console,
+            use_console_color: self.use_console_color,
+        }
+    }
+}
+
+impl Default for WASMLayerConfigBuilder {
+    fn default() -> WASMLayerConfigBuilder {
+        WASMLayerConfigBuilder {
+            report_logs_in_timings: true,
+            report_logs_in_console: true,
+            use_console_color: true,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub struct WASMLayerConfig {
+    report_logs_in_timings: bool,
+    report_logs_in_console: bool,
+    use_console_color: bool,
 }
 
 impl core::default::Default for WASMLayerConfig {
