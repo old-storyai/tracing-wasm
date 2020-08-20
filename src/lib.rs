@@ -40,6 +40,7 @@ mod test {
                 report_logs_in_timings: true,
                 report_logs_in_console: true,
                 use_console_color: true,
+                level: tracing::Level::TRACE,
             }
         )
     }
@@ -86,6 +87,25 @@ mod test {
         assert_eq!(config.report_logs_in_console, true);
         assert_eq!(config.use_console_color, true);
     }
+
+    #[test]
+    fn test_default_config_log_level() {
+        let builder = WASMLayerConfigBuilder::new();
+
+        let config = builder.build();
+
+        assert_eq!(config.level, tracing::Level::TRACE);
+    }
+
+    #[test]
+    fn test_set_config_log_level_warn() {
+        let mut builder = WASMLayerConfigBuilder::new();
+        builder.set_level(tracing::Level::WARN);
+
+        let config = builder.build();
+
+        assert_eq!(config.level, tracing::Level::WARN);
+    }
 }
 
 pub enum ConsoleConfig {
@@ -101,6 +121,8 @@ pub struct WASMLayerConfigBuilder {
     report_logs_in_console: bool,
     /// Only relevant if report_logs_in_console is true, this will use color style strings in the console.
     use_console_color: bool,
+    /// Log events will be reported from this level -- Default is ALL (TRACE)
+    level: tracing::Level
 }
 
 impl WASMLayerConfigBuilder {
@@ -114,6 +136,15 @@ impl WASMLayerConfigBuilder {
         report_logs_in_timings: bool,
     ) -> &mut WASMLayerConfigBuilder {
         self.report_logs_in_timings = report_logs_in_timings;
+        self
+    }
+
+    /// Set the minimal level on which events should be displayed
+    pub fn set_level(
+        &mut self,
+        level: tracing::Level,
+    ) -> &mut WASMLayerConfigBuilder {
+        self.level = level;
         self
     }
 
@@ -146,6 +177,7 @@ impl WASMLayerConfigBuilder {
             report_logs_in_timings: self.report_logs_in_timings,
             report_logs_in_console: self.report_logs_in_console,
             use_console_color: self.use_console_color,
+            level: self.level.clone(),
         }
     }
 }
@@ -156,6 +188,7 @@ impl Default for WASMLayerConfigBuilder {
             report_logs_in_timings: true,
             report_logs_in_console: true,
             use_console_color: true,
+            level: tracing::Level::TRACE,
         }
     }
 }
@@ -165,6 +198,7 @@ pub struct WASMLayerConfig {
     report_logs_in_timings: bool,
     report_logs_in_console: bool,
     use_console_color: bool,
+    level: tracing::Level
 }
 
 impl core::default::Default for WASMLayerConfig {
@@ -173,6 +207,7 @@ impl core::default::Default for WASMLayerConfig {
             report_logs_in_timings: true,
             report_logs_in_console: true,
             use_console_color: true,
+            level: tracing::Level::TRACE
         }
     }
 }
@@ -203,6 +238,11 @@ fn mark_name(id: &tracing::Id) -> String {
 }
 
 impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for WASMLayer {
+    fn enabled(&self, metadata: &tracing::Metadata<'_>, _: Context<'_, S>) -> bool {
+        let level = metadata.level();
+        level <= &self.config.level
+    }
+
     fn new_span(
         &self,
         attrs: &tracing::span::Attributes<'_>,
