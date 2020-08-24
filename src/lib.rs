@@ -24,13 +24,181 @@ extern "C" {
     fn log4(message1: &str, message2: &str, message3: &str, message4: &str);
 }
 
-pub struct WASMLayerConfig {
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_default_built_config() {
+        let builder = WASMLayerConfigBuilder::new();
+
+        let config = builder.build();
+
+        assert_eq!(
+            config,
+            WASMLayerConfig {
+                report_logs_in_timings: true,
+                report_logs_in_console: true,
+                use_console_color: true,
+                max_level: tracing::Level::TRACE,
+            }
+        )
+    }
+
+    #[test]
+    fn test_set_report_logs_in_timings() {
+        let mut builder = WASMLayerConfigBuilder::new();
+        builder.set_report_logs_in_timings(false);
+
+        let config = builder.build();
+
+        assert_eq!(config.report_logs_in_timings, false);
+    }
+
+    #[test]
+    fn test_set_console_config_no_reporting() {
+        let mut builder = WASMLayerConfigBuilder::new();
+        builder.set_console_config(ConsoleConfig::NoReporting);
+
+        let config = builder.build();
+
+        assert_eq!(config.report_logs_in_console, false);
+        assert_eq!(config.use_console_color, false);
+    }
+
+    #[test]
+    fn test_set_console_config_without_color() {
+        let mut builder = WASMLayerConfigBuilder::new();
+        builder.set_console_config(ConsoleConfig::ReportWithoutConsoleColor);
+
+        let config = builder.build();
+
+        assert_eq!(config.report_logs_in_console, true);
+        assert_eq!(config.use_console_color, false);
+    }
+
+    #[test]
+    fn test_set_console_config_with_color() {
+        let mut builder = WASMLayerConfigBuilder::new();
+        builder.set_console_config(ConsoleConfig::ReportWithConsoleColor);
+
+        let config = builder.build();
+
+        assert_eq!(config.report_logs_in_console, true);
+        assert_eq!(config.use_console_color, true);
+    }
+
+    #[test]
+    fn test_default_config_log_level() {
+        let builder = WASMLayerConfigBuilder::new();
+
+        let config = builder.build();
+
+        assert_eq!(config.max_level, tracing::Level::TRACE);
+    }
+
+    #[test]
+    fn test_set_config_log_level_warn() {
+        let mut builder = WASMLayerConfigBuilder::new();
+        builder.set_max_level(tracing::Level::WARN);
+
+        let config = builder.build();
+
+        assert_eq!(config.max_level, tracing::Level::WARN);
+    }
+}
+
+pub enum ConsoleConfig {
+    NoReporting,
+    ReportWithoutConsoleColor,
+    ReportWithConsoleColor,
+}
+
+pub struct WASMLayerConfigBuilder {
     /// Log events will be marked and measured so they appear in performance Timings
-    pub report_logs_in_timings: bool,
+    report_logs_in_timings: bool,
     /// Log events will be logged to the browser console
-    pub report_logs_in_console: bool,
+    report_logs_in_console: bool,
     /// Only relevant if report_logs_in_console is true, this will use color style strings in the console.
-    pub use_console_color: bool,
+    use_console_color: bool,
+    /// Log events will be reported from this level -- Default is ALL (TRACE)
+    max_level: tracing::Level
+}
+
+impl WASMLayerConfigBuilder {
+    pub fn new() -> WASMLayerConfigBuilder {
+        WASMLayerConfigBuilder::default()
+    }
+
+    /// Set whether events should appear in performance Timings
+    pub fn set_report_logs_in_timings(
+        &mut self,
+        report_logs_in_timings: bool,
+    ) -> &mut WASMLayerConfigBuilder {
+        self.report_logs_in_timings = report_logs_in_timings;
+        self
+    }
+
+    /// Set the maximal level on which events should be displayed
+    pub fn set_max_level(
+        &mut self,
+        max_level: tracing::Level,
+    ) -> &mut WASMLayerConfigBuilder {
+        self.max_level = max_level;
+        self
+    }
+
+    /// Set if and how events should be displayed in the browser console
+    pub fn set_console_config(
+        &mut self,
+        console_config: ConsoleConfig,
+    ) -> &mut WASMLayerConfigBuilder {
+        match console_config {
+            ConsoleConfig::NoReporting => {
+                self.report_logs_in_console = false;
+                self.use_console_color = false;
+            }
+            ConsoleConfig::ReportWithoutConsoleColor => {
+                self.report_logs_in_console = true;
+                self.use_console_color = false;
+            }
+            ConsoleConfig::ReportWithConsoleColor => {
+                self.report_logs_in_console = true;
+                self.use_console_color = true;
+            }
+        }
+
+        self
+    }
+
+    /// Build the WASMLayerConfig
+    pub fn build(&self) -> WASMLayerConfig {
+        WASMLayerConfig {
+            report_logs_in_timings: self.report_logs_in_timings,
+            report_logs_in_console: self.report_logs_in_console,
+            use_console_color: self.use_console_color,
+            max_level: self.max_level.clone(),
+        }
+    }
+}
+
+impl Default for WASMLayerConfigBuilder {
+    fn default() -> WASMLayerConfigBuilder {
+        WASMLayerConfigBuilder {
+            report_logs_in_timings: true,
+            report_logs_in_console: true,
+            use_console_color: true,
+            max_level: tracing::Level::TRACE,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub struct WASMLayerConfig {
+    report_logs_in_timings: bool,
+    report_logs_in_console: bool,
+    use_console_color: bool,
+    max_level: tracing::Level
 }
 
 impl core::default::Default for WASMLayerConfig {
@@ -39,6 +207,7 @@ impl core::default::Default for WASMLayerConfig {
             report_logs_in_timings: true,
             report_logs_in_console: true,
             use_console_color: true,
+            max_level: tracing::Level::TRACE
         }
     }
 }
@@ -69,6 +238,11 @@ fn mark_name(id: &tracing::Id) -> String {
 }
 
 impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for WASMLayer {
+    fn enabled(&self, metadata: &tracing::Metadata<'_>, _: Context<'_, S>) -> bool {
+        let level = metadata.level();
+        level <= &self.config.max_level
+    }
+
     fn new_span(
         &self,
         attrs: &tracing::span::Attributes<'_>,
