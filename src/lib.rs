@@ -122,7 +122,7 @@ pub struct WASMLayerConfigBuilder {
     /// Only relevant if report_logs_in_console is true, this will use color style strings in the console.
     use_console_color: bool,
     /// Log events will be reported from this level -- Default is ALL (TRACE)
-    max_level: tracing::Level
+    max_level: tracing::Level,
 }
 
 impl WASMLayerConfigBuilder {
@@ -140,10 +140,7 @@ impl WASMLayerConfigBuilder {
     }
 
     /// Set the maximal level on which events should be displayed
-    pub fn set_max_level(
-        &mut self,
-        max_level: tracing::Level,
-    ) -> &mut WASMLayerConfigBuilder {
+    pub fn set_max_level(&mut self, max_level: tracing::Level) -> &mut WASMLayerConfigBuilder {
         self.max_level = max_level;
         self
     }
@@ -198,7 +195,7 @@ pub struct WASMLayerConfig {
     report_logs_in_timings: bool,
     report_logs_in_console: bool,
     use_console_color: bool,
-    max_level: tracing::Level
+    max_level: tracing::Level,
 }
 
 impl core::default::Default for WASMLayerConfig {
@@ -207,7 +204,7 @@ impl core::default::Default for WASMLayerConfig {
             report_logs_in_timings: true,
             report_logs_in_console: true,
             use_console_color: true,
-            max_level: tracing::Level::TRACE
+            max_level: tracing::Level::TRACE,
         }
     }
 }
