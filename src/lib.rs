@@ -1,3 +1,4 @@
+extern crate chrono;
 use core::fmt::{self, Write};
 use core::sync::atomic::AtomicUsize;
 
@@ -44,6 +45,7 @@ mod test {
                 report_logs_in_console: true,
                 use_console_color: true,
                 max_level: tracing::Level::TRACE,
+                log_time: true,
             }
         )
     }
@@ -126,6 +128,8 @@ pub struct WASMLayerConfigBuilder {
     use_console_color: bool,
     /// Log events will be reported from this level -- Default is ALL (TRACE)
     max_level: tracing::Level,
+    /// Prepend timestamp to log messages
+    log_time: bool,
 }
 
 impl WASMLayerConfigBuilder {
@@ -170,6 +174,14 @@ impl WASMLayerConfigBuilder {
 
         self
     }
+    /// Set if and how events should be displayed in the browser console
+    pub fn set_log_time(
+        &mut self,
+        log_time: bool,
+    ) -> &mut WASMLayerConfigBuilder {
+        self.log_time = log_time;
+        self
+    }
 
     /// Build the WASMLayerConfig
     pub fn build(&self) -> WASMLayerConfig {
@@ -178,6 +190,7 @@ impl WASMLayerConfigBuilder {
             report_logs_in_console: self.report_logs_in_console,
             use_console_color: self.use_console_color,
             max_level: self.max_level,
+            log_time: self.log_time,
         }
     }
 }
@@ -189,6 +202,7 @@ impl Default for WASMLayerConfigBuilder {
             report_logs_in_console: true,
             use_console_color: true,
             max_level: tracing::Level::TRACE,
+            log_time: true,
         }
     }
 }
@@ -199,6 +213,7 @@ pub struct WASMLayerConfig {
     report_logs_in_console: bool,
     use_console_color: bool,
     max_level: tracing::Level,
+    log_time: bool,
 }
 
 impl core::default::Default for WASMLayerConfig {
@@ -208,6 +223,7 @@ impl core::default::Default for WASMLayerConfig {
             report_logs_in_console: true,
             use_console_color: true,
             max_level: tracing::Level::TRACE,
+            log_time: true,
         }
     }
 }
@@ -307,10 +323,16 @@ impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for WASMLayer {
                     .and_then(|file| meta.line().map(|ln| format!("{}:{}", file, ln)))
                     .unwrap_or_default();
 
+                let timestamp = if self.config.log_time {
+                    chrono::Local::now().format("%a %d %T%.f").to_string()
+                } else {
+                    String::new()
+                };
                 if self.config.use_console_color {
                     log4(
                         format!(
-                            "%c{}%c {}{}%c{}",
+                            "{} %c{}%c {}{}%c{}",
+                            timestamp,
                             level,
                             origin,
                             thread_display_suffix(),
@@ -328,7 +350,8 @@ impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for WASMLayer {
                     );
                 } else {
                     log1(format!(
-                        "{} {}{} {}",
+                        "{} {} {}{} {}",
+                        timestamp,
                         level,
                         origin,
                         thread_display_suffix(),
