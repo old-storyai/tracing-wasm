@@ -324,14 +324,14 @@ impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for WASMLayer {
                     .unwrap_or_default();
 
                 let timestamp = if self.config.log_time {
-                    chrono::Local::now().format("%a %d %T%.f").to_string()
+                    chrono::Local::now().format("%a %d %T%.f ").to_string()
                 } else {
                     String::new()
                 };
                 if self.config.use_console_color {
                     log4(
                         format!(
-                            "{} %c{}%c {}{}%c{}",
+                            "{}%c{}%c {}{}%c{}",
                             timestamp,
                             level,
                             origin,
@@ -350,7 +350,7 @@ impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for WASMLayer {
                     );
                 } else {
                     log1(format!(
-                        "{} {} {}{} {}",
+                        "{}{} {}{} {}",
                         timestamp,
                         level,
                         origin,
