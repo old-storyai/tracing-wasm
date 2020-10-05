@@ -18,6 +18,8 @@ Leverage performance profiling with your browser tools with the [tracing crate](
 
 ![Screenshot of performance reported using the `tracing-wasm` Subscriber](./2020-07-10-devtools-demo-screenshot.png)
 
+Note: `tracing_wasm` uses the global JavaScript `console` and `performance` objects. It will not work in environments where one or both of these are not available, such as Node.js or Cloudflare Workers.
+
 ## Usage
 
 For the simplest out of the box set-up, you can simply set `tracing_wasm` as your default tracing Subscriber in wasm_bindgen(start)
