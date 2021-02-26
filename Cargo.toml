@@ -14,12 +14,12 @@ license = "MIT OR Apache-2.0"
 name = "tracing-wasm"
 readme = "README.md"
 repository = "https://github.com/storyscript/tracing-wasm"
-version = "0.1.0"
+version = "0.2.0"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-tracing = {version = "0.1", features = ["attributes"]}
-tracing-subscriber = {version = "0.2", features = ["registry"]}
+tracing = {version = "0.1", features = ["attributes"], default-features = false}
+tracing-subscriber = {version = "0.2", features = ["registry"], default-features = false}
 wasm-bindgen = {version = "0.2"}
