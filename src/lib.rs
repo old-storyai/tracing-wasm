@@ -174,7 +174,7 @@ impl WASMLayerConfigBuilder {
             report_logs_in_timings: self.report_logs_in_timings,
             report_logs_in_console: self.report_logs_in_console,
             use_console_color: self.use_console_color,
-            max_level: self.max_level.clone(),
+            max_level: self.max_level,
         }
     }
 }
