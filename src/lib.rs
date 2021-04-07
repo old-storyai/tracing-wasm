@@ -318,31 +318,35 @@ impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for WASMLayer {
     }
     /// doc: Notifies this layer that a span with the given ID was entered.
     fn on_enter(&self, id: &tracing::Id, _ctx: Context<'_, S>) {
-        mark(&mark_name(id));
+        if self.config.report_logs_in_timings {
+            mark(&mark_name(id));
+        }
     }
     /// doc: Notifies this layer that the span with the given ID was exited.
     fn on_exit(&self, id: &tracing::Id, ctx: Context<'_, S>) {
-        if let Some(span_ref) = ctx.span(id) {
-            let meta = span_ref.metadata();
-            if let Some(debug_record) = span_ref.extensions().get::<StringRecorder>() {
-                measure(
-                    &format!(
-                        "\"{}\" {} {}",
-                        meta.name(),
-                        meta.module_path().unwrap_or("..."),
-                        debug_record,
-                    ),
-                    &mark_name(id),
-                )
-            } else {
-                measure(
-                    &format!(
-                        "\"{}\" {}",
-                        meta.name(),
-                        meta.module_path().unwrap_or("..."),
-                    ),
-                    &mark_name(id),
-                )
+        if self.config.report_logs_in_timings {
+            if let Some(span_ref) = ctx.span(id) {
+                let meta = span_ref.metadata();
+                if let Some(debug_record) = span_ref.extensions().get::<StringRecorder>() {
+                    measure(
+                        &format!(
+                            "\"{}\" {} {}",
+                            meta.name(),
+                            meta.module_path().unwrap_or("..."),
+                            debug_record,
+                        ),
+                        &mark_name(id),
+                    )
+                } else {
+                    measure(
+                        &format!(
+                            "\"{}\" {}",
+                            meta.name(),
+                            meta.module_path().unwrap_or("..."),
+                        ),
+                        &mark_name(id),
+                    )
+                }
             }
         }
     }
