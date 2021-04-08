@@ -14,14 +14,31 @@ extern "C" {
     fn mark(a: &str);
     #[wasm_bindgen(js_namespace = performance)]
     fn measure(name: &str, startMark: &str);
+
     #[wasm_bindgen(js_namespace = console, js_name = log)]
     fn log1(message: &str);
     #[wasm_bindgen(js_namespace = console, js_name = log)]
-    fn log2(message1: &str, message2: &str);
-    #[wasm_bindgen(js_namespace = console, js_name = log)]
-    fn log3(message1: &str, message2: &str, message3: &str);
-    #[wasm_bindgen(js_namespace = console, js_name = log)]
     fn log4(message1: &str, message2: &str, message3: &str, message4: &str);
+
+    #[wasm_bindgen(js_namespace = console, js_name = debug)]
+    fn debug1(message: &str);
+    #[wasm_bindgen(js_namespace = console, js_name = debug)]
+    fn debug4(message1: &str, message2: &str, message3: &str, message4: &str);
+
+    #[wasm_bindgen(js_namespace = console, js_name = info)]
+    fn info1(message: &str);
+    #[wasm_bindgen(js_namespace = console, js_name = info)]
+    fn info4(message1: &str, message2: &str, message3: &str, message4: &str);
+
+    #[wasm_bindgen(js_namespace = console, js_name = warn)]
+    fn warn1(message: &str);
+    #[wasm_bindgen(js_namespace = console, js_name = warn)]
+    fn warn4(message1: &str, message2: &str, message3: &str, message4: &str);
+
+    #[wasm_bindgen(js_namespace = console, js_name = error)]
+    fn error1(message: &str);
+    #[wasm_bindgen(js_namespace = console, js_name = error)]
+    fn error4(message1: &str, message2: &str, message3: &str, message4: &str);
 }
 
 #[cfg(test)]
@@ -293,7 +310,14 @@ impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for WASMLayer {
                         "color: inherit",
                     );
                 } else {
-                    log1(&format!("{} {}{}", level, origin, recorder));
+                    let output = format!("{}{}", origin, recorder);
+                    match *level {
+                        tracing::Level::TRACE => debug1(&output),
+                        tracing::Level::DEBUG => debug1(&output),
+                        tracing::Level::INFO => info1(&output),
+                        tracing::Level::WARN => warn1(&output),
+                        tracing::Level::ERROR => error1(&output),
+                    }
                 }
             }
             if self.config.report_logs_in_timings {
