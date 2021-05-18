@@ -1,8 +1,11 @@
 use core::fmt::{self, Write};
 use core::sync::atomic::AtomicUsize;
 
-use tracing::field::{Field, Visit};
 use tracing::Subscriber;
+use tracing::{
+    dispatcher::SetGlobalDefaultError,
+    field::{Field, Visit},
+};
 use tracing_subscriber::layer::*;
 use tracing_subscriber::registry::*;
 
@@ -12,8 +15,8 @@ use wasm_bindgen::prelude::*;
 extern "C" {
     #[wasm_bindgen(js_namespace = performance)]
     fn mark(a: &str);
-    #[wasm_bindgen(js_namespace = performance)]
-    fn measure(name: &str, startMark: &str);
+    #[wasm_bindgen(catch, js_namespace = performance)]
+    fn measure(name: &str, startMark: &str) -> Result<(), JsValue>;
     #[wasm_bindgen(js_namespace = console, js_name = log)]
     fn log1(message: &str);
     #[wasm_bindgen(js_namespace = console, js_name = log)]
@@ -304,7 +307,7 @@ impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for WASMLayer {
                 );
                 // mark and measure so you can see a little blip in the profile
                 mark(&mark_name);
-                measure(
+                let _ = measure(
                     &format!(
                         "{} {}{}",
                         level,
@@ -325,7 +328,7 @@ impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for WASMLayer {
         if let Some(span_ref) = ctx.span(id) {
             let meta = span_ref.metadata();
             if let Some(debug_record) = span_ref.extensions().get::<StringRecorder>() {
-                measure(
+                let _ = measure(
                     &format!(
                         "\"{}\" {} {}",
                         meta.name(),
@@ -333,16 +336,16 @@ impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for WASMLayer {
                         debug_record,
                     ),
                     &mark_name(id),
-                )
+                );
             } else {
-                measure(
+                let _ = measure(
                     &format!(
                         "\"{}\" {}",
                         meta.name(),
                         meta.module_path().unwrap_or("..."),
                     ),
                     &mark_name(id),
-                )
+                );
             }
         }
     }
@@ -360,6 +363,14 @@ pub fn set_as_global_default() {
         Registry::default().with(WASMLayer::new(WASMLayerConfig::default())),
     )
     .expect("default global");
+}
+
+/// Set the global default with [tracing::subscriber::set_global_default]
+pub fn try_set_as_global_default() -> Result<(), SetGlobalDefaultError> {
+    log1("try_set_as_global_default set default");
+    tracing::subscriber::set_global_default(
+        Registry::default().with(WASMLayer::new(WASMLayerConfig::default())),
+    )
 }
 
 /// Set the global default with [tracing::subscriber::set_global_default]
