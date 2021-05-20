@@ -233,8 +233,17 @@ impl core::default::Default for WASMLayer {
     }
 }
 
+#[cfg(not(feature = "mark-with-rayon-thread-index"))]
 fn mark_name(id: &tracing::Id) -> String {
     format!("t{:x}", id.into_u64())
+}
+#[cfg(feature = "mark-with-rayon-thread-index")]
+fn mark_name(id: &tracing::Id) -> String {
+    format!(
+        "t{:x}-{}",
+        id.into_u64(),
+        rayon::current_thread_index().unwrap_or_else(|| 999)
+    )
 }
 
 impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for WASMLayer {
@@ -367,7 +376,6 @@ pub fn set_as_global_default() {
 
 /// Set the global default with [tracing::subscriber::set_global_default]
 pub fn try_set_as_global_default() -> Result<(), SetGlobalDefaultError> {
-    log1("try_set_as_global_default set default");
     tracing::subscriber::set_global_default(
         Registry::default().with(WASMLayer::new(WASMLayerConfig::default())),
     )
