@@ -1,12 +1,14 @@
 use core::fmt::{self, Write};
 use core::sync::atomic::AtomicUsize;
 
-use tracing::Subscriber;
 use tracing::{
-    dispatcher::SetGlobalDefaultError,
+    dispatch::SetGlobalDefaultError,
     field::{Field, Visit},
+    Collect,
 };
-use tracing_subscriber::layer::*;
+use tracing_subscriber::prelude::*;
+use tracing_subscriber::{subscribe::Context, Subscribe};
+// use tracing_subscriber::filter::*;
 use tracing_subscriber::registry::*;
 
 use wasm_bindgen::prelude::*;
@@ -246,8 +248,8 @@ fn mark_name(id: &tracing::Id) -> String {
     )
 }
 
-impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for WASMLayer {
-    fn enabled(&self, metadata: &tracing::Metadata<'_>, _: Context<'_, S>) -> bool {
+impl<C: Collect + for<'lookup> LookupSpan<'lookup>> Subscribe<C> for WASMLayer {
+    fn enabled(&self, metadata: &tracing::Metadata<'_>, _: Context<'_, C>) -> bool {
         let level = metadata.level();
         level <= &self.config.max_level
     }
@@ -256,7 +258,7 @@ impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for WASMLayer {
         &self,
         attrs: &tracing::span::Attributes<'_>,
         id: &tracing::Id,
-        ctx: Context<'_, S>,
+        ctx: Context<'_, C>,
     ) {
         let mut new_debug_record = StringRecorder::new();
         attrs.record(&mut new_debug_record);
@@ -269,7 +271,7 @@ impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for WASMLayer {
     }
 
     /// doc: Notifies this layer that a span with the given Id recorded the given values.
-    fn on_record(&self, id: &tracing::Id, values: &tracing::span::Record<'_>, ctx: Context<'_, S>) {
+    fn on_record(&self, id: &tracing::Id, values: &tracing::span::Record<'_>, ctx: Context<'_, C>) {
         if let Some(span_ref) = ctx.span(id) {
             if let Some(debug_record) = span_ref.extensions_mut().get_mut::<StringRecorder>() {
                 values.record(debug_record);
@@ -278,9 +280,9 @@ impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for WASMLayer {
     }
 
     // /// doc: Notifies this layer that a span with the ID span recorded that it follows from the span with the ID follows.
-    // fn on_follows_from(&self, _span: &tracing::Id, _follows: &tracing::Id, ctx: Context<'_, S>) {}
+    // fn on_follows_from(&self, _span: &tracing::Id, _follows: &tracing::Id, ctx: Context<'_, C>) {}
     /// doc: Notifies this layer that an event has occurred.
-    fn on_event(&self, event: &tracing::Event<'_>, _ctx: Context<'_, S>) {
+    fn on_event(&self, event: &tracing::Event<'_>, _ctx: Context<'_, C>) {
         if self.config.report_logs_in_timings || self.config.report_logs_in_console {
             let mut recorder = StringRecorder::new();
             event.record(&mut recorder);
@@ -329,11 +331,11 @@ impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for WASMLayer {
         }
     }
     /// doc: Notifies this layer that a span with the given ID was entered.
-    fn on_enter(&self, id: &tracing::Id, _ctx: Context<'_, S>) {
+    fn on_enter(&self, id: &tracing::Id, _ctx: Context<'_, C>) {
         mark(&mark_name(id));
     }
     /// doc: Notifies this layer that the span with the given ID was exited.
-    fn on_exit(&self, id: &tracing::Id, ctx: Context<'_, S>) {
+    fn on_exit(&self, id: &tracing::Id, ctx: Context<'_, C>) {
         if let Some(span_ref) = ctx.span(id) {
             let meta = span_ref.metadata();
             if let Some(debug_record) = span_ref.extensions().get::<StringRecorder>() {
@@ -360,15 +362,15 @@ impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for WASMLayer {
     }
     // /// doc: Notifies this layer that the span with the given ID has been closed.
     // /// We can dispose of any data for the span we might have here...
-    // fn on_close(&self, _id: tracing::Id, ctx: Context<'_, S>) {}
+    // fn on_close(&self, _id: tracing::Id, ctx: Context<'_, C>) {}
     // /// doc: Notifies this layer that a span ID has been cloned, and that the subscriber returned a different ID.
     // /// I'm not sure if I need to do something here...
-    // fn on_id_change(&self, _old: &tracing::Id, _new: &tracing::Id, ctx: Context<'_, S>) {}
+    // fn on_id_change(&self, _old: &tracing::Id, _new: &tracing::Id, ctx: Context<'_, C>) {}
 }
 
 /// Set the global default with [tracing::subscriber::set_global_default]
 pub fn set_as_global_default() {
-    tracing::subscriber::set_global_default(
+    tracing::collect::set_global_default(
         Registry::default().with(WASMLayer::new(WASMLayerConfig::default())),
     )
     .expect("default global");
@@ -376,14 +378,14 @@ pub fn set_as_global_default() {
 
 /// Set the global default with [tracing::subscriber::set_global_default]
 pub fn try_set_as_global_default() -> Result<(), SetGlobalDefaultError> {
-    tracing::subscriber::set_global_default(
+    tracing::collect::set_global_default(
         Registry::default().with(WASMLayer::new(WASMLayerConfig::default())),
     )
 }
 
 /// Set the global default with [tracing::subscriber::set_global_default]
 pub fn set_as_global_default_with_config(config: WASMLayerConfig) {
-    tracing::subscriber::set_global_default(Registry::default().with(WASMLayer::new(config)))
+    tracing::collect::set_global_default(Registry::default().with(WASMLayer::new(config)))
         .expect("default global");
 }
 
