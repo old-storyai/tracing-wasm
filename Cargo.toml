@@ -13,7 +13,7 @@ keywords = ["logging", "metrics", "wasm", "spans", "tracing"]
 license = "MIT OR Apache-2.0"
 name = "tracing-wasm"
 readme = "README.md"
-repository = "https://github.com/storyscript/tracing-wasm"
+repository = "https://github.com/storyai/tracing-wasm"
 version = "0.2.0"
 
 [lib]
