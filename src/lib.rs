@@ -242,7 +242,7 @@ fn mark_name(id: &tracing::Id) -> String {
     format!(
         "t{:x}-{}",
         id.into_u64(),
-        rayon::current_thread_index().unwrap_or_else(|| 999)
+        rayon::current_thread_index().unwrap_or(999)
     )
 }
 
