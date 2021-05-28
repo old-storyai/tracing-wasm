@@ -1,5 +1,5 @@
 [package]
-authors = ["Cole Lawrence <cole@colelawrence.com>"]
+authors = ["Cole Lawrence <cole@colelawrence.com>", "Story.ai Team <team@story.ai>"]
 categories = [
   "development-tools::debugging",
   "development-tools::profiling",
@@ -20,7 +20,7 @@ version = "0.2.0"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-rayon = {version = "1.5", optional = true }
+rayon = {version = "1.5", optional = true}
 tracing = {version = "0.1", features = ["attributes"], default-features = false}
 tracing-subscriber = {version = "0.2", features = ["registry"], default-features = false}
 wasm-bindgen = {version = "0.2"}
