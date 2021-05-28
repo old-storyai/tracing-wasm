@@ -16,15 +16,15 @@ extern "C" {
     #[wasm_bindgen(js_namespace = performance)]
     fn mark(a: &str);
     #[wasm_bindgen(catch, js_namespace = performance)]
-    fn measure(name: &str, startMark: &str) -> Result<(), JsValue>;
+    fn measure(name: String, startMark: String) -> Result<(), JsValue>;
     #[wasm_bindgen(js_namespace = console, js_name = log)]
-    fn log1(message: &str);
+    fn log1(message: String);
     #[wasm_bindgen(js_namespace = console, js_name = log)]
     fn log2(message1: &str, message2: &str);
     #[wasm_bindgen(js_namespace = console, js_name = log)]
     fn log3(message1: &str, message2: &str, message3: &str);
     #[wasm_bindgen(js_namespace = console, js_name = log)]
-    fn log4(message1: &str, message2: &str, message3: &str, message4: &str);
+    fn log4(message1: String, message2: &str, message3: &str, message4: &str);
 }
 
 #[cfg(test)]
@@ -234,6 +234,21 @@ impl core::default::Default for WASMLayer {
 }
 
 #[cfg(not(feature = "mark-with-rayon-thread-index"))]
+#[inline]
+fn thread_display_suffix() -> &'static str {
+    ""
+}
+#[cfg(feature = "mark-with-rayon-thread-index")]
+fn thread_display_suffix() -> String {
+    let mut message = " #".to_string();
+    match rayon::current_thread_index() {
+        Some(idx) => message.push_str(&format!("{}", idx)),
+        None => message.push_str("main"),
+    }
+    message
+}
+
+#[cfg(not(feature = "mark-with-rayon-thread-index"))]
 fn mark_name(id: &tracing::Id) -> String {
     format!("t{:x}", id.into_u64())
 }
@@ -291,9 +306,16 @@ impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for WASMLayer {
                     .file()
                     .and_then(|file| meta.line().map(|ln| format!("{}:{}", file, ln)))
                     .unwrap_or_default();
+
                 if self.config.use_console_color {
                     log4(
-                        &format!("%c{}%c {}%c{}", level, origin, recorder),
+                        format!(
+                            "%c{}%c {}{}%c{}",
+                            level,
+                            origin,
+                            thread_display_suffix(),
+                            recorder,
+                        ),
                         match *level {
                             tracing::Level::TRACE => "color: dodgerblue; background: #444",
                             tracing::Level::DEBUG => "color: lawngreen; background: #444",
@@ -305,7 +327,13 @@ impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for WASMLayer {
                         "color: inherit",
                     );
                 } else {
-                    log1(&format!("{} {}{}", level, origin, recorder));
+                    log1(format!(
+                        "{} {}{} {}",
+                        level,
+                        origin,
+                        thread_display_suffix(),
+                        recorder,
+                    ));
                 }
             }
             if self.config.report_logs_in_timings {
@@ -317,13 +345,14 @@ impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for WASMLayer {
                 // mark and measure so you can see a little blip in the profile
                 mark(&mark_name);
                 let _ = measure(
-                    &format!(
-                        "{} {}{}",
+                    format!(
+                        "{} {}{} {}",
                         level,
                         meta.module_path().unwrap_or("..."),
-                        recorder
+                        thread_display_suffix(),
+                        recorder,
                     ),
-                    &mark_name,
+                    mark_name,
                 );
             }
         }
@@ -338,22 +367,24 @@ impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for WASMLayer {
             let meta = span_ref.metadata();
             if let Some(debug_record) = span_ref.extensions().get::<StringRecorder>() {
                 let _ = measure(
-                    &format!(
-                        "\"{}\" {} {}",
+                    format!(
+                        "\"{}\"{} {} {}",
                         meta.name(),
+                        thread_display_suffix(),
                         meta.module_path().unwrap_or("..."),
                         debug_record,
                     ),
-                    &mark_name(id),
+                    mark_name(id),
                 );
             } else {
                 let _ = measure(
-                    &format!(
-                        "\"{}\" {}",
+                    format!(
+                        "\"{}\"{} {}",
                         meta.name(),
+                        thread_display_suffix(),
                         meta.module_path().unwrap_or("..."),
                     ),
-                    &mark_name(id),
+                    mark_name(id),
                 );
             }
         }
@@ -387,39 +418,45 @@ pub fn set_as_global_default_with_config(config: WASMLayerConfig) {
         .expect("default global");
 }
 
-struct StringRecorder(String, bool);
+struct StringRecorder {
+    display: String,
+    is_following_args: bool,
+}
 impl StringRecorder {
     fn new() -> Self {
-        StringRecorder(String::new(), false)
+        StringRecorder {
+            display: String::new(),
+            is_following_args: false,
+        }
     }
 }
 
 impl Visit for StringRecorder {
     fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
         if field.name() == "message" {
-            if !self.0.is_empty() {
-                self.0 = format!("{:?}\n{}", value, self.0)
+            if !self.display.is_empty() {
+                self.display = format!("{:?}\n{}", value, self.display)
             } else {
-                self.0 = format!("{:?}", value)
+                self.display = format!("{:?}", value)
             }
         } else {
-            if self.1 {
+            if self.is_following_args {
                 // following args
-                writeln!(self.0).unwrap();
+                writeln!(self.display).unwrap();
             } else {
                 // first arg
-                write!(self.0, " ").unwrap();
-                self.1 = true;
+                write!(self.display, " ").unwrap();
+                self.is_following_args = true;
             }
-            write!(self.0, "{} = {:?};", field.name(), value).unwrap();
+            write!(self.display, "{} = {:?};", field.name(), value).unwrap();
         }
     }
 }
 
 impl core::fmt::Display for StringRecorder {
     fn fmt(&self, mut f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        if !self.0.is_empty() {
-            write!(&mut f, " {}", self.0)
+        if !self.display.is_empty() {
+            write!(&mut f, " {}", self.display)
         } else {
             Ok(())
         }
