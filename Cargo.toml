@@ -24,6 +24,7 @@ rayon = {version = "1.5", optional = true}
 tracing = {version = "0.1", features = ["attributes"], default-features = false}
 tracing-subscriber = {version = "0.3", features = ["registry"], default-features = false}
 wasm-bindgen = {version = "0.2"}
+chrono = { version = "^0.4", features = ["wasmbind"] }
 
 [features]
 mark-with-rayon-thread-index = ["rayon"]
