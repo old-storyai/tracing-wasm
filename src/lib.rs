@@ -267,7 +267,7 @@ impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for WASMLayer {
         level <= &self.config.max_level
     }
 
-    fn new_span(
+    fn on_new_span(
         &self,
         attrs: &tracing::span::Attributes<'_>,
         id: &tracing::Id,
