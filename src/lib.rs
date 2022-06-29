@@ -6,6 +6,8 @@ use tracing::{
     dispatcher::SetGlobalDefaultError,
     field::{Field, Visit},
 };
+#[cfg(feature = "tracing-log")]
+use tracing_log::NormalizeEvent;
 use tracing_subscriber::layer::*;
 use tracing_subscriber::registry::*;
 
@@ -44,6 +46,7 @@ mod test {
                 report_logs_in_console: true,
                 use_console_color: true,
                 max_level: tracing::Level::TRACE,
+                show_fields: true,
             }
         )
     }
@@ -126,6 +129,8 @@ pub struct WASMLayerConfigBuilder {
     use_console_color: bool,
     /// Log events will be reported from this level -- Default is ALL (TRACE)
     max_level: tracing::Level,
+    /// Log events will show additional fields, usually the file or line.
+    show_fields: bool,
 }
 
 impl WASMLayerConfigBuilder {
@@ -171,6 +176,12 @@ impl WASMLayerConfigBuilder {
         self
     }
 
+    /// Set if events will show additional fields, usually the file or line.
+    pub fn set_show_fields(&mut self, show_fields: bool) -> &mut WASMLayerConfigBuilder {
+        self.show_fields = show_fields;
+        self
+    }
+
     /// Build the WASMLayerConfig
     pub fn build(&self) -> WASMLayerConfig {
         WASMLayerConfig {
@@ -178,6 +189,7 @@ impl WASMLayerConfigBuilder {
             report_logs_in_console: self.report_logs_in_console,
             use_console_color: self.use_console_color,
             max_level: self.max_level,
+            show_fields: self.show_fields,
         }
     }
 }
@@ -189,6 +201,7 @@ impl Default for WASMLayerConfigBuilder {
             report_logs_in_console: true,
             use_console_color: true,
             max_level: tracing::Level::TRACE,
+            show_fields: true,
         }
     }
 }
@@ -199,6 +212,7 @@ pub struct WASMLayerConfig {
     report_logs_in_console: bool,
     use_console_color: bool,
     max_level: tracing::Level,
+    show_fields: bool,
 }
 
 impl core::default::Default for WASMLayerConfig {
@@ -208,6 +222,7 @@ impl core::default::Default for WASMLayerConfig {
             report_logs_in_console: true,
             use_console_color: true,
             max_level: tracing::Level::TRACE,
+            show_fields: true,
         }
     }
 }
@@ -273,7 +288,7 @@ impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for WASMLayer {
         id: &tracing::Id,
         ctx: Context<'_, S>,
     ) {
-        let mut new_debug_record = StringRecorder::new();
+        let mut new_debug_record = StringRecorder::new(self.config.show_fields);
         attrs.record(&mut new_debug_record);
 
         if let Some(span_ref) = ctx.span(id) {
@@ -297,8 +312,13 @@ impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for WASMLayer {
     /// doc: Notifies this layer that an event has occurred.
     fn on_event(&self, event: &tracing::Event<'_>, _ctx: Context<'_, S>) {
         if self.config.report_logs_in_timings || self.config.report_logs_in_console {
-            let mut recorder = StringRecorder::new();
+            let mut recorder = StringRecorder::new(self.config.show_fields);
             event.record(&mut recorder);
+            #[cfg(feature = "tracing-log")]
+            let normalized_meta = event.normalized_metadata();
+            #[cfg(feature = "tracing-log")]
+            let meta = normalized_meta.as_ref().unwrap_or_else(|| event.metadata());
+            #[cfg(not(feature = "tracing-log"))]
             let meta = event.metadata();
             let level = meta.level();
             if self.config.report_logs_in_console {
@@ -421,12 +441,13 @@ pub fn set_as_global_default_with_config(config: WASMLayerConfig) {
 struct StringRecorder {
     display: String,
     is_following_args: bool,
+    show_fields: bool,
 }
 impl StringRecorder {
-    fn new() -> Self {
+    fn new(show_fields: bool) -> Self {
         StringRecorder {
-            display: String::new(),
-            is_following_args: false,
+            show_fields,
+            ..Default::default()
         }
     }
 }
@@ -439,7 +460,7 @@ impl Visit for StringRecorder {
             } else {
                 self.display = format!("{:?}", value)
             }
-        } else {
+        } else if self.show_fields {
             if self.is_following_args {
                 // following args
                 writeln!(self.display).unwrap();
@@ -465,6 +486,10 @@ impl core::fmt::Display for StringRecorder {
 
 impl core::default::Default for StringRecorder {
     fn default() -> Self {
-        StringRecorder::new()
+        Self {
+            display: String::new(),
+            is_following_args: false,
+            show_fields: true,
+        }
     }
 }
