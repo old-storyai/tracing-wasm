@@ -6,6 +6,8 @@ use tracing::{
     dispatcher::SetGlobalDefaultError,
     field::{Field, Visit},
 };
+#[cfg(feature = "tracing-log")]
+use tracing_log::NormalizeEvent;
 use tracing_subscriber::layer::*;
 use tracing_subscriber::registry::*;
 
@@ -299,6 +301,11 @@ impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for WASMLayer {
         if self.config.report_logs_in_timings || self.config.report_logs_in_console {
             let mut recorder = StringRecorder::new();
             event.record(&mut recorder);
+            #[cfg(feature = "tracing-log")]
+            let normalized_meta = event.normalized_metadata();
+            #[cfg(feature = "tracing-log")]
+            let meta = normalized_meta.as_ref().unwrap_or_else(|| event.metadata());
+            #[cfg(not(feature = "tracing-log"))]
             let meta = event.metadata();
             let level = meta.level();
             if self.config.report_logs_in_console {
