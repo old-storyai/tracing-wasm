@@ -44,6 +44,7 @@ mod test {
                 report_logs_in_console: true,
                 use_console_color: true,
                 max_level: tracing::Level::TRACE,
+                include_origin: true,
             }
         )
     }
@@ -109,6 +110,16 @@ mod test {
 
         assert_eq!(config.max_level, tracing::Level::WARN);
     }
+
+    #[test]
+    fn test_set_include_origin() {
+        let mut builder = WASMLayerConfigBuilder::new();
+        builder.set_include_origin(false);
+
+        let config = builder.build();
+
+        assert_eq!(config.include_origin, false);
+    }
 }
 
 pub enum ConsoleConfig {
@@ -126,6 +137,8 @@ pub struct WASMLayerConfigBuilder {
     use_console_color: bool,
     /// Log events will be reported from this level -- Default is ALL (TRACE)
     max_level: tracing::Level,
+    /// Log events will include the source file and line number -- Default is true
+    include_origin: bool,
 }
 
 impl WASMLayerConfigBuilder {
@@ -145,6 +158,12 @@ impl WASMLayerConfigBuilder {
     /// Set the maximal level on which events should be displayed
     pub fn set_max_level(&mut self, max_level: tracing::Level) -> &mut WASMLayerConfigBuilder {
         self.max_level = max_level;
+        self
+    }
+
+    // Set whether logs should include the source file and line  number
+    pub fn set_include_origin(&mut self, include_origin: bool) -> &mut WASMLayerConfigBuilder {
+        self.include_origin = include_origin;
         self
     }
 
@@ -178,6 +197,7 @@ impl WASMLayerConfigBuilder {
             report_logs_in_console: self.report_logs_in_console,
             use_console_color: self.use_console_color,
             max_level: self.max_level,
+            include_origin: self.include_origin,
         }
     }
 }
@@ -189,6 +209,7 @@ impl Default for WASMLayerConfigBuilder {
             report_logs_in_console: true,
             use_console_color: true,
             max_level: tracing::Level::TRACE,
+            include_origin: true,
         }
     }
 }
@@ -199,6 +220,7 @@ pub struct WASMLayerConfig {
     report_logs_in_console: bool,
     use_console_color: bool,
     max_level: tracing::Level,
+    include_origin: bool,
 }
 
 impl core::default::Default for WASMLayerConfig {
@@ -208,6 +230,7 @@ impl core::default::Default for WASMLayerConfig {
             report_logs_in_console: true,
             use_console_color: true,
             max_level: tracing::Level::TRACE,
+            include_origin: true,
         }
     }
 }
@@ -302,10 +325,13 @@ impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for WASMLayer {
             let meta = event.metadata();
             let level = meta.level();
             if self.config.report_logs_in_console {
-                let origin = meta
-                    .file()
-                    .and_then(|file| meta.line().map(|ln| format!("{}:{}", file, ln)))
-                    .unwrap_or_default();
+                let origin = if self.config.include_origin {
+                    meta.file()
+                        .and_then(|file| meta.line().map(|ln| format!("{}:{}", file, ln)))
+                        .unwrap_or_default()
+                } else {
+                    String::new()
+                };
 
                 if self.config.use_console_color {
                     log4(
